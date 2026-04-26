@@ -1,0 +1,85 @@
+{% extends "padre.html" %}
+
+{% block content %}
+
+<style>
+.ticket-container {
+    width: 320px;
+    margin: 30px auto;
+    border: 1px dashed black;
+    padding: 15px;
+    font-family: monospace;
+    background: white;
+}
+
+.ticket-container h3 {
+    text-align: center;
+}
+
+.ticket-container hr {
+    margin: 10px 0;
+}
+
+.ticket-container p {
+    margin: 5px 0;
+}
+
+.ticket-footer {
+    text-align: center;
+    margin-top: 10px;
+}
+
+/* BOTONES */
+.ticket-actions {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.btn-volver, .btn-pdf {
+    display: inline-block;
+    margin: 10px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.btn-volver {
+    background: #0d1b5e;
+    color: white;
+}
+
+.btn-pdf {
+    background: #4CAF50;
+    color: white;
+}
+</style>
+
+<div class="ticket-container">
+    <h3>TICKET</h3>
+    <hr>
+
+    <p><strong>Matrícula:</strong> {{ pago.matricula }}</p>
+    <p><strong>Horas:</strong> {{ pago.horas }}</p>
+    <p><strong>Total:</strong> ${{ pago.total }}</p>
+    <p><strong>Cambio:</strong> ${{ pago.cambio }}</p>
+    <p><strong>Fecha:</strong> {{ pago.fecha }}</p>
+
+    <hr>
+
+    <p class="ticket-footer">Gracias por su visita</p>
+</div>
+
+<div class="ticket-actions">
+
+    <a href="{{ url_for('main.control') }}" class="btn-volver">
+        ← Volver al control
+    </a>
+
+    <a href="{{ url_for('main.ticket_pdf', id=pago.pago_id) }}" class="btn-pdf" target="_blank">
+    Descargar PDF
+    </a>
+
+</div>
+
+{% endblock %}

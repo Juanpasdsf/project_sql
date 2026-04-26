@@ -1,0 +1,212 @@
+{% extends "padre.html" %}
+
+{% block content %}
+<style>
+/* --- ESTILOS EXCLUSIVOS DE COBRO --- */
+.cobro-layout {
+    display: flex;
+    gap: 20px;
+}
+.left { width: 50%; }
+.right { width: 50%; }
+
+/* PANEL DE BÚSQUEDA */
+.search-panel {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+.search-panel input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 2px solid #9db4d6;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+.search-panel input:focus {
+    border-color: #0d1b5e;
+    outline: none;
+}
+
+/* TARJETA DE INFO DEL VEHÍCULO */
+.info-vehiculo {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 16px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+/* PANEL DE PAGO (DERECHA) */
+.payment-panel {
+    background: #f9fafb;
+    padding: 25px;
+    border-radius: 12px;
+    border: 2px solid #e0e0e0;
+}
+.total-box {
+    background: #0d1b5e;
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+.total-box h2 {
+    font-size: 40px;
+    margin-top: 5px;
+}
+.calc-row {
+    margin-bottom: 15px;
+}
+.calc-row label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
+}
+.calc-row input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 18px;
+    text-align: right;
+}
+.calc-row input:focus {
+    border-color: #4CAF50;
+    outline: none;
+}
+.cambio-text {
+    font-size: 24px;
+    font-weight: bold;
+    color: #d9534f; 
+    text-align: right;
+    display: block;
+    margin-top: 5px;
+}
+
+/* BOTONES */
+.btn-buscar {
+    background: #0d1b5e;
+    color: white;
+    border: none;
+    padding: 12px;
+    width: 100%;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+    transition: 0.3s;
+}
+.btn-buscar:hover { background: #1a2a7a; }
+
+.btn-cobrar {
+    background: #a6d96a;
+    border: none;
+    padding: 15px;
+    width: 100%;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 18px;
+    margin-top: 10px;
+}
+.btn-cobrar:hover { background: #8cc657; }
+</style>
+
+<div class="cobro-layout">
+
+    <div class="left">
+        <div class="search-panel">
+            <h3>Buscar Vehículo</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Escanea el código de barras o ingresa la matrícula</p>
+            
+            <form method="POST" action="/buscar_ticket">
+                <input type="text" name="codigo_ticket" placeholder="Ej. ABC-123 o #Boleto">
+                <button type="submit" class="btn-buscar">Buscar / Leer Boleto</button>
+            </form>
+        </div>
+
+        <div class="info-vehiculo">
+            <h3 style="margin-bottom: 15px; color: #0d1b5e;">Detalles de Estancia</h3>
+            <div class="info-row">
+                <span>Matrícula:</span>
+                <strong>{{ pago.matricula if pago else '---' }}</strong>
+            </div>
+            <div class="info-row">
+                <span>Hora de Entrada:</span>
+                <strong>{{ pago.fecha_entrada if pago else '---' }}</strong>
+            </div>
+            <div class="info-row">
+                <span>Hora de Salida:</span>
+                <strong>{{ pago.fecha_salida if pago else '---' }}</strong>
+            </div>
+            <div class="info-row">
+                <span>Tiempo Total:</span>
+                <strong>{{ pago.horas if pago else '---' }} hrs</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="right">
+        <div class="payment-panel">
+            
+            <form method="POST" action="/procesar_pago">
+                <div class="total-box">
+                    <span>TOTAL A PAGAR</span>
+                   <h2 id="total" data-total="{{ pago.total if pago else 0 }}">
+                        $ {{ "%.2f"|format(pago.total) if pago else "0.00" }}
+                    </h2>
+                </div>
+
+                <div class="calc-row">
+                    <label>Monto Recibido ($):</label>
+                    <input type="number" id="monto_recibido" name="monto_recibido" placeholder="0.00">
+                </div>
+
+                <div class="calc-row">
+                    <label>Cambio a Devolver:</label>
+                    <span class="cambio-text" id="cambio">$ 0.00</span>
+                </div>
+
+                <button type="submit" class="btn-cobrar">Registrar Pago</button>
+            </form>
+            
+        </div>
+    </div>
+
+</div>
+
+<script>
+const totalElement = document.getElementById('total');
+const total = parseFloat(totalElement.dataset.total) || 0;
+
+const inputMonto = document.getElementById('monto_recibido');
+const cambioText = document.getElementById('cambio');
+
+inputMonto.addEventListener('input', function() {
+    let recibido = parseFloat(this.value) || 0;
+    let cambio = recibido - total;
+
+    if (cambio < 0) {
+        cambioText.innerText = "$ 0.00";
+        cambioText.style.color = "red";
+    } else {
+        cambioText.innerText = "$ " + cambio.toFixed(2);
+        cambioText.style.color = "green";
+    }
+});
+</script>
+
+{% endblock %}

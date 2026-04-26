@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>{% block title %}Acceso{% endblock %}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Segoe UI',sans-serif;
+}
+
+body{
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:linear-gradient(135deg,#9db4d6,#eaf0f8);
+}
+
+/* CONTENEDOR */
+.auth-container{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+
+/* TITULO SUPERIOR */
+.brand{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+.brand h1{
+    font-size:24px;
+    color:#0d1b5e;
+}
+
+.brand p{
+    font-size:14px;
+    color:#555;
+}
+
+/* CARD */
+.auth-card{
+    background:white;
+    padding:30px;
+    border-radius:14px;
+    width:320px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.15);
+}
+
+/* INPUTS */
+.auth-card input{
+    width:100%;
+    padding:12px;
+    margin-bottom:15px;
+    border-radius:8px;
+    border:1px solid #ccc;
+    transition:.2s;
+}
+
+.auth-card input:focus{
+    border-color:#4CAF50;
+    outline:none;
+}
+
+/* BOTON */
+.auth-card button{
+    width:100%;
+    padding:12px;
+    background:#4CAF50;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:bold;
+    transition:.2s;
+}
+
+.auth-card button:hover{
+    background:#43a047;
+}
+
+/* ERROR */
+.error{
+    background:#f8d7da;
+    color:#721c24;
+    padding:10px;
+    border-radius:8px;
+    margin-bottom:10px;
+    text-align:center;
+    font-size:14px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="auth-container">
+
+    <!-- MARCA / IDENTIDAD -->
+    <div class="brand">
+        <h1>Servicio de Estacionamiento</h1>
+        <p>Acceso al sistema de control y gestión</p>
+    </div>
+
+    <!-- TARJETA -->
+    <div class="auth-card">
+        {% block content %}{% endblock %}
+    </div>
+
+</div>
+
+</body>
+</html>

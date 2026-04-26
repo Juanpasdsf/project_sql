@@ -1,0 +1,26 @@
+{% extends "auth.html" %}
+
+{% block title %}Iniciar sesión{% endblock %}
+
+{% block content %}
+
+<h2 style="text-align:center; margin-bottom:15px;">Iniciar sesión</h2>
+
+{% if error %}
+<div class="error">
+    {{ error }}
+</div>
+{% endif %}
+
+<form method="POST" action="/login">
+
+    <input type="text" name="usuario" placeholder="Usuario" required>
+
+    <input type="password" name="password" placeholder="Contraseña" required>
+
+    <button type="submit">Entrar</button>
+    <a href="/registro">Crear cuenta</a>
+
+</form>
+
+{% endblock %}

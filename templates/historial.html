@@ -1,0 +1,40 @@
+{% extends "padre.html" %}
+
+{% block content %}
+
+<h2 style="text-align:center; margin-bottom:20px;">Historial de Pagos</h2>
+
+<table border="1" cellpadding="10" style="width:90%; margin:auto; border-collapse:collapse;">
+    <thead style="background:#0d1b5e; color:white;">
+        <tr>
+            <th>ID</th>
+            <th>Matrícula</th>
+            <th>Horas</th>
+            <th>Total ($)</th>
+            <th>Fecha</th>
+            <th>PDF</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for pago in pagos %}
+        <tr style="text-align:center;">
+            <td>{{ pago.pago_id }}</td>
+            <td>{{ pago.matricula }}</td>
+            <td>{{ pago.horas_totales }}</td>
+            <td>{{ pago.monto_total }}</td>
+            <td>{{ pago.fecha_pago }}</td>
+            <td>
+                <a href="{{ url_for('main.ticket_pdf', id=pago.pago_id) }}" target="_blank">
+                    Descargar
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div style="text-align:center; margin-top:20px;">
+    <a href="{{ url_for('main.control') }}">← Volver</a>
+</div>
+
+{% endblock %}

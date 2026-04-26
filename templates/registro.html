@@ -1,24 +1,33 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Registro</title>
-</head>
-<body>
+{% extends "auth.html" %}
 
-<h2>Registrar usuario</h2>
+{% block title %}Registrar Usuario{% endblock %}
+
+{% block content %}
+
+<h2 style="text-align:center; margin-bottom:15px; color:#0d1b5e;">Crear cuenta</h2>
+
+{% if error %}
+<div class="error">
+    {{ error }}
+</div>
+{% endif %}
 
 <form method="POST" action="/procesar_registro">
+
     <input type="text" name="nombre" placeholder="Nombre completo" required>
-    <br><br>
+    
     <input type="text" name="usuario" placeholder="Usuario" required>
-    <br><br>
+    
     <input type="password" name="password" placeholder="Contraseña" required>
-    <br><br>
-    <button type="submit">Registrarse</button>
+
+    <button type="submit" style="margin-bottom: 15px;">Registrarse</button>
+
 </form>
 
-<a href="/">Volver al login</a>
+<div style="text-align:center;">
+    <a href="/" style="color:#0d1b5e; text-decoration:none; font-size:14px; font-weight:bold; transition: 0.2s;">
+        Volver al login
+    </a>
+</div>
 
-</body>
-</html>
+{% endblock %}

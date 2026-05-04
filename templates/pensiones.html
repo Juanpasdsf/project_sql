@@ -96,6 +96,21 @@
 .recibo-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; color: #0d1b5e; margin-top: 10px; }
 .descuento-text { color: #d9534f; font-weight: bold; }
 
+.btn-cancelar {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: 0.2s;
+}
+.btn-cancelar:hover { background: #c82333; }
+.estado-container { display: flex; align-items: center; }
+
 </style>
 
 <div class="pensiones-layout">
@@ -112,9 +127,23 @@
                     <strong>{{ pension.nombre_cliente }}</strong>
                     <span>Matrícula: {{ pension.matricula }} | Vence: {{ pension.fecha_vencimiento }}</span>
                 </div>
-                <div class="tag {{ pension.estado_clase }}">
-                    {{ pension.estado_texto }}
+                
+                <!-- NUEVO: Contenedor para alinear la etiqueta y el botón -->
+                <div class="estado-container">
+                    <div class="tag {{ pension.estado_clase }}">
+                        {{ pension.estado_texto }}
+                    </div>
+                    
+                    <!-- Solo mostramos el botón si la pensión NO está vencida -->
+                    {% if pension.estado_clase != 'vencida' %}
+                    <form action="/cancelar_pension/{{ pension.matricula }}" method="POST" style="margin: 0; display: inline;">
+                        <button type="submit" class="btn-cancelar" onclick="return confirm('¿Seguro que deseas cancelar esta pensión? El vehículo saldrá y el cajón quedará libre de inmediato.');">
+                            Cancelar
+                        </button>
+                    </form>
+                    {% endif %}
                 </div>
+                
             </div>
             {% endfor %}
         </div>
@@ -146,6 +175,8 @@
             <div class="recibo-box">
                 <h4>¡Pensión Registrada!</h4>
                 <div class="recibo-row">
+                    <span>Cajón Exclusivo Asignado:</span>
+                    <strong>Nº {{ recibo.cajon_asignado }}</strong>
                     <span>Subtotal:</span>
                     <span>${{ recibo.subtotal }}</span>
                 </div>

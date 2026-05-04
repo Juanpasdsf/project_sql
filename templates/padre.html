@@ -74,13 +74,23 @@ body {
 </div>
 
 <div class="navbar">
-    <a href="/">Login</a>
-    <a href="{{ url_for('main.clientes_cobrador') }}">Clientes</a>
-    <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
-    <a href="{{ url_for('main.control') }}">Control</a>
-    <a href="{{ url_for('main.cobro') }}">Cobro</a>
-    <a href="{{ url_for('main.historial') }}">Historial</a> 
-    <a href="{{ url_for('main.pensiones') }}">Pensiones</a>
+    <!-- Tus enlaces normales que todos pueden ver -->
+    <a href="/clientes">Clientes</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/control">Control</a>
+    
+    <a href="/historial">Historial</a>
+    <a href="/pensiones">Pensiones</a>
+
+<!-- Lógica: Solo se muestra si el rol_id es 1 (Administrador) -->
+    {% if session.get('rol_id') == 1 %}
+        <a href="/registro" style="color: #4CAF50; font-weight: bold;">Registrar Usuarios</a>
+    {% endif %}
+
+<!-- Lógica: Botón de cerrar sesión -->
+    {% if session.get('usuario') %}
+        <a href="/logout" style="color: #dc3545; font-weight: bold; margin-left: 20px;">Cerrar sesión</a>
+    {% endif %}
 </div>
 
 <div class="container">

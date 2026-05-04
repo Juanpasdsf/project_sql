@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from datetime import datetime
 import pdfkit
 from database import get_connection
+import calendar
 
 main_bp = Blueprint('main', __name__)
 
@@ -29,10 +30,15 @@ def procesar_login():
     if user:
         session['usuario_id'] = user['usuario_id']
         session['usuario'] = user['username']
+        session['rol_id'] = user['rol_id'] # <--- ¡NUEVA LÍNEA! Guarda si es admin o cajero
         return redirect(url_for('main.dashboard'))
     else:
         return render_template('login.html', error="Usuario o contraseña incorrectos")
 
+@main_bp.route('/logout')
+def logout():
+    session.clear() # Esto borra al usuario de la memoria
+    return redirect(url_for('main.index')) # Lo regresa a la pantalla de Login
 
 @main_bp.route('/registro')
 def registro():
@@ -725,4 +731,184 @@ def ticket_pdf(id):
 
 @main_bp.route('/pensiones')
 def pensiones():
-    return render_template('pensiones.html')
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+
+    # Consulta para cargar el historial de pensiones del lado izquierdo
+    cursor.execute("""
+        SELECT 
+            p.matricula, 
+            DATE_FORMAT(p.fecha_fin, '%d/%m/%Y') AS fecha_vencimiento,
+            c.nombre AS nombre_cliente,
+            CASE 
+                WHEN p.fecha_fin < CURDATE() THEN 'vencida'
+                WHEN DATEDIFF(p.fecha_fin, CURDATE()) <= 7 THEN 'por-vencer'
+                ELSE 'vigente'
+            END AS estado_clase,
+            CASE 
+                WHEN p.fecha_fin < CURDATE() THEN 'Vencida'
+                WHEN DATEDIFF(p.fecha_fin, CURDATE()) <= 7 THEN 'Por Vencer'
+                ELSE 'Vigente'
+            END AS estado_texto
+        FROM pensiones p
+        JOIN vehiculos v ON p.matricula = v.matricula
+        JOIN clientes c ON v.cliente_id = c.cliente_id
+        ORDER BY p.fecha_fin DESC
+    """)
+    lista_pensiones = cursor.fetchall()
+    
+    cursor.close()
+    conexion.close()
+
+    return render_template('pensiones.html', lista_pensiones=lista_pensiones)
+
+
+@main_bp.route('/procesar_pension', methods=['POST'])
+def procesar_pension():
+    identificador = request.form.get('identificador')
+    fecha_inicio_str = request.form.get('fecha_inicio')
+    duracion_meses = int(request.form.get('duracion'))
+
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        # 1. Buscar al cliente
+        cursor.execute("""
+            SELECT v.matricula, c.cliente_id, c.nombre, c.fecha_registro
+            FROM vehiculos v
+            JOIN clientes c ON v.cliente_id = c.cliente_id
+            WHERE v.matricula = %s OR c.rfc = %s
+            LIMIT 1
+        """, (identificador, identificador))
+
+        vehiculo = cursor.fetchone()
+
+        if not vehiculo:
+            return "Error: No se encontró el vehículo o el RFC. Registre al cliente primero."
+
+        # 1.5 ¡NUEVO! Buscar un cajón disponible
+        cursor.execute("SELECT * FROM cajones WHERE estado = 'disponible' LIMIT 1")
+        cajon_disponible = cursor.fetchone()
+        
+        if not cajon_disponible:
+            return "Error: El estacionamiento está lleno, no hay cajones para asignar a la pensión."
+
+        # 2. Calcular la fecha de finalización
+        from datetime import datetime, date
+        fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+        
+        mes_total = fecha_inicio.month - 1 + duracion_meses
+        anio_fin = fecha_inicio.year + mes_total // 12
+        mes_fin = mes_total % 12 + 1
+        
+        try:
+            fecha_fin = date(anio_fin, mes_fin, fecha_inicio.day)
+        except ValueError:
+            dia_max = calendar.monthrange(anio_fin, mes_fin)[1]
+            fecha_fin = date(anio_fin, mes_fin, dia_max)
+
+        # 3. Validar si el cliente tiene más de 2 años
+        dias_antiguedad = (fecha_inicio - vehiculo['fecha_registro']).days
+        aplica_descuento = dias_antiguedad >= 730
+
+        # 4. Calcular dinero
+        precio_mensual = 1000 
+        subtotal = precio_mensual * duracion_meses
+        monto_descuento = (subtotal * 0.20) if aplica_descuento else 0
+        total = subtotal - monto_descuento
+
+        # 5. Guardar la pensión
+        usuario_id = session.get('usuario_id', 1)
+        cursor.execute("""
+            INSERT INTO pensiones (fecha_inicio, fecha_fin, descuento, usuario_id, matricula)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (fecha_inicio, fecha_fin, monto_descuento, usuario_id, vehiculo['matricula']))
+        
+        # 5.5 ¡NUEVO! Asignar la estancia física al cajón como "Pensionado" (tipo 2)
+        cursor.execute("""
+            INSERT INTO estancias (fecha_entrada, matricula, cajon_id, tipo_servicio_id, usuario_id)
+            VALUES (NOW(), %s, %s, 2, %s)
+        """, (vehiculo['matricula'], cajon_disponible['cajon_id'], usuario_id))
+
+        # 5.6 ¡NUEVO! Marcar el cajón como ocupado
+        cursor.execute("""
+            UPDATE cajones SET estado = 'ocupado'
+            WHERE cajon_id = %s
+        """, (cajon_disponible['cajon_id'],))
+
+        conexion.commit()
+
+        # 6. Crear el recibo enviando el número de cajón a tu HTML
+        recibo = {
+            "subtotal": f"{subtotal:,.2f}",
+            "aplica_descuento": aplica_descuento,
+            "monto_descuento": f"{monto_descuento:,.2f}",
+            "total": f"{total:,.2f}",
+            "nueva_fecha_vencimiento": fecha_fin.strftime('%d/%m/%Y'),
+            "cajon_asignado": cajon_disponible['numero'] # <-- Pasamos el cajón al front
+        }
+
+        # Volvemos a cargar la lista
+        cursor.execute("""
+            SELECT p.matricula, DATE_FORMAT(p.fecha_fin, '%d/%m/%Y') AS fecha_vencimiento, c.nombre AS nombre_cliente,
+                CASE WHEN p.fecha_fin < CURDATE() THEN 'vencida' WHEN DATEDIFF(p.fecha_fin, CURDATE()) <= 7 THEN 'por-vencer' ELSE 'vigente' END AS estado_clase,
+                CASE WHEN p.fecha_fin < CURDATE() THEN 'Vencida' WHEN DATEDIFF(p.fecha_fin, CURDATE()) <= 7 THEN 'Por Vencer' ELSE 'Vigente' END AS estado_texto
+            FROM pensiones p JOIN vehiculos v ON p.matricula = v.matricula JOIN clientes c ON v.cliente_id = c.cliente_id ORDER BY p.fecha_fin DESC
+        """)
+        lista_pensiones = cursor.fetchall()
+
+        return render_template('pensiones.html', recibo=recibo, lista_pensiones=lista_pensiones)
+
+    except Exception as e:
+        conexion.rollback()
+        print("Error al procesar pensión:", e)
+        return "Hubo un error interno en el servidor."
+    finally:
+        cursor.close()
+        conexion.close()
+        
+@main_bp.route('/cancelar_pension/<matricula>', methods=['POST'])
+def cancelar_pension(matricula):
+    conexion = get_connection()
+    cursor = conexion.cursor(dictionary=True)
+
+    try:
+        # 1. Encontrar en qué cajón está guardado este coche actualmente (tipo 2 = pensión)
+        cursor.execute("""
+            SELECT estancia_id, cajon_id 
+            FROM estancias 
+            WHERE matricula = %s AND fecha_salida IS NULL AND tipo_servicio_id = 2
+        """, (matricula,))
+        estancia = cursor.fetchone()
+
+        if estancia:
+            # 2. Liberar el cajón físicamente
+            cursor.execute("""
+                UPDATE cajones SET estado = 'disponible' WHERE cajon_id = %s
+            """, (estancia['cajon_id'],))
+            
+            # 3. Marcar la salida del vehículo cerrando su estancia
+            cursor.execute("""
+                UPDATE estancias SET fecha_salida = NOW() WHERE estancia_id = %s
+            """, (estancia['estancia_id'],))
+
+        # 4. Caducar la pensión inmediatamente (le restamos 1 día a hoy para que ya no sea válida)
+        cursor.execute("""
+            UPDATE pensiones 
+            SET fecha_fin = CURDATE() - INTERVAL 1 DAY 
+            WHERE matricula = %s AND fecha_fin >= CURDATE()
+        """, (matricula,))
+
+        conexion.commit()
+
+    except Exception as e:
+        conexion.rollback()
+        print("Error al cancelar pensión:", e)
+    
+    finally:
+        cursor.close()
+        conexion.close()
+
+    # Redirigir de vuelta a la pantalla para ver los cambios
+    return redirect(url_for('main.pensiones'))

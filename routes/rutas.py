@@ -30,7 +30,7 @@ def procesar_login():
     if user:
         session['usuario_id'] = user['usuario_id']
         session['usuario'] = user['username']
-        session['rol_id'] = user['rol_id'] # <--- ¡NUEVA LÍNEA! Guarda si es admin o cajero
+        session['rol_id'] = user['rol_id']
         return redirect(url_for('main.dashboard'))
     else:
         return render_template('login.html', error="Usuario o contraseña incorrectos")
@@ -593,7 +593,7 @@ def procesar_pago():
     cajon_id = pago['cajon_id']
 
     if monto_recibido < total:
-        return "Monto insuficiente"
+        return render_template('cobro.html', pago=pago, error="⚠️ El monto recibido no alcanza para cubrir el total.")
 
     cambio = monto_recibido - total
 
@@ -825,13 +825,13 @@ def procesar_pension():
             VALUES (%s, %s, %s, %s, %s)
         """, (fecha_inicio, fecha_fin, monto_descuento, usuario_id, vehiculo['matricula']))
         
-        # 5.5 ¡NUEVO! Asignar la estancia física al cajón como "Pensionado" (tipo 2)
+        # 5.5 Asignar la estancia física al cajón como "Pensionado" (tipo 2)
         cursor.execute("""
             INSERT INTO estancias (fecha_entrada, matricula, cajon_id, tipo_servicio_id, usuario_id)
             VALUES (NOW(), %s, %s, 2, %s)
         """, (vehiculo['matricula'], cajon_disponible['cajon_id'], usuario_id))
 
-        # 5.6 ¡NUEVO! Marcar el cajón como ocupado
+        # 5.6 Marcar el cajón como ocupado
         cursor.execute("""
             UPDATE cajones SET estado = 'ocupado'
             WHERE cajon_id = %s

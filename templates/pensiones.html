@@ -83,7 +83,7 @@
 }
 .btn-registrar:hover { background: #1a2a7a; }
 
-/* RECIBO / RESUMEN GENERADO POR JINJA */
+/* RECIBO / RESUMEN */
 .recibo-box {
     margin-top: 20px;
     background: white;
@@ -95,6 +95,9 @@
 .recibo-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; border-bottom: 1px dashed #eee; padding-bottom: 4px; }
 .recibo-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; color: #0d1b5e; margin-top: 10px; }
 .descuento-text { color: #d9534f; font-weight: bold; }
+
+/* --- NUEVOS ESTILOS DE CONFIRMACIÓN EN LÍNEA --- */
+.estado-container { display: flex; align-items: center; }
 
 .btn-cancelar {
     background: #dc3545;
@@ -109,7 +112,42 @@
     transition: 0.2s;
 }
 .btn-cancelar:hover { background: #c82333; }
-.estado-container { display: flex; align-items: center; }
+
+.confirmacion-box {
+    display: none; /* Oculto por defecto */
+    align-items: center;
+    background: #f8d7da;
+    padding: 3px 8px;
+    border-radius: 6px;
+    margin-left: 10px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #721c24;
+}
+
+.btn-confirmar-si {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 8px;
+    font-weight: bold;
+}
+.btn-confirmar-si:hover { background: #bd2130; }
+
+.btn-confirmar-no {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 5px;
+    font-weight: bold;
+}
+.btn-confirmar-no:hover { background: #5a6268; }
 
 </style>
 
@@ -128,19 +166,28 @@
                     <span>Matrícula: {{ pension.matricula }} | Vence: {{ pension.fecha_vencimiento }}</span>
                 </div>
                 
-                <!-- NUEVO: Contenedor para alinear la etiqueta y el botón -->
                 <div class="estado-container">
                     <div class="tag {{ pension.estado_clase }}">
                         {{ pension.estado_texto }}
                     </div>
                     
-                    <!-- Solo mostramos el botón si la pensión NO está vencida -->
+                    <!-- Solo mostramos las opciones si la pensión NO está vencida -->
                     {% if pension.estado_clase != 'vencida' %}
-                    <form action="/cancelar_pension/{{ pension.matricula }}" method="POST" style="margin: 0; display: inline;">
-                        <button type="submit" class="btn-cancelar" onclick="return confirm('¿Seguro que deseas cancelar esta pensión? El vehículo saldrá y el cajón quedará libre de inmediato.');">
-                            Cancelar
-                        </button>
-                    </form>
+                    
+                    <!-- 1. Botón inicial de Cancelar -->
+                    <button type="button" class="btn-cancelar" id="btn-iniciar-{{ pension.matricula }}" onclick="pedirConfirmacion('{{ pension.matricula }}')">
+                        Cancelar
+                    </button>
+
+                    <!-- 2. Caja de confirmación (Oculta al inicio) -->
+                    <div class="confirmacion-box" id="box-conf-{{ pension.matricula }}">
+                        <span>¿Seguro?</span>
+                        <form action="/cancelar_pension/{{ pension.matricula }}" method="POST" style="margin: 0; display: inline;">
+                            <button type="submit" class="btn-confirmar-si">Sí</button>
+                        </form>
+                        <button type="button" class="btn-confirmar-no" onclick="cancelarConfirmacion('{{ pension.matricula }}')">No</button>
+                    </div>
+
                     {% endif %}
                 </div>
                 
@@ -203,4 +250,21 @@
     </div>
 
 </div>
+
+<!-- SCRIPT PARA CONTROLAR LA CONFIRMACIÓN EN LÍNEA -->
+<script>
+function pedirConfirmacion(matricula) {
+    // Ocultar el botón rojo original
+    document.getElementById('btn-iniciar-' + matricula).style.display = 'none';
+    // Mostrar la cajita de confirmación (Seguro? Sí / No)
+    document.getElementById('box-conf-' + matricula).style.display = 'flex';
+}
+
+function cancelarConfirmacion(matricula) {
+    // Ocultar la cajita de confirmación
+    document.getElementById('box-conf-' + matricula).style.display = 'none';
+    // Volver a mostrar el botón rojo original
+    document.getElementById('btn-iniciar-' + matricula).style.display = 'block';
+}
+</script>
 {% endblock %}

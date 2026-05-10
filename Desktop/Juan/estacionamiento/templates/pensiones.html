@@ -1,0 +1,270 @@
+{% extends "padre.html" %}
+
+{% block content %}
+<style>
+/* --- ESTILOS EXCLUSIVOS DE PENSIONES --- */
+.pensiones-layout {
+    display: flex;
+    gap: 20px;
+}
+
+.left { width: 60%; }
+.right { width: 40%; }
+
+/* BUSCADOR */
+.search-panel {
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+.search-panel input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+.search-panel input:focus { border-color: #0d1b5e; outline: none; }
+
+/* LISTA DE PENSIONADOS */
+.card-pension {
+    background: white;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.card-info strong { color: #0d1b5e; font-size: 16px; }
+.card-info span { display: block; color: #666; font-size: 13px; margin-top: 3px; }
+
+/* ESTADOS DE PENSIÓN */
+.tag { padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+.vigente { background: #d4edda; color: #155724; }
+.vencida { background: #f8d7da; color: #721c24; }
+.por-vencer { background: #fff3cd; color: #856404; }
+
+/* FORMULARIO Y COTIZACIÓN */
+.form-box {
+    background: #f9fafb;
+    padding: 20px;
+    border-radius: 12px;
+}
+.form-box h3 {
+    margin-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 8px;
+    color: #0d1b5e;
+}
+.form-box label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #333; }
+.form-box input, .form-box select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+.form-box input:focus, .form-box select:focus { border-color: #4CAF50; outline: none; }
+
+.btn-registrar {
+    background: #0d1b5e;
+    color: white;
+    border: none;
+    padding: 12px;
+    width: 100%;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+    transition: 0.3s;
+}
+.btn-registrar:hover { background: #1a2a7a; }
+
+/* RECIBO / RESUMEN */
+.recibo-box {
+    margin-top: 20px;
+    background: white;
+    border: 2px solid #4CAF50;
+    padding: 15px;
+    border-radius: 8px;
+}
+.recibo-box h4 { color: #4CAF50; text-align: center; margin-bottom: 15px; }
+.recibo-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; border-bottom: 1px dashed #eee; padding-bottom: 4px; }
+.recibo-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; color: #0d1b5e; margin-top: 10px; }
+.descuento-text { color: #d9534f; font-weight: bold; }
+
+/* --- NUEVOS ESTILOS DE CONFIRMACIÓN EN LÍNEA --- */
+.estado-container { display: flex; align-items: center; }
+
+.btn-cancelar {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: 0.2s;
+}
+.btn-cancelar:hover { background: #c82333; }
+
+.confirmacion-box {
+    display: none; /* Oculto por defecto */
+    align-items: center;
+    background: #f8d7da;
+    padding: 3px 8px;
+    border-radius: 6px;
+    margin-left: 10px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #721c24;
+}
+
+.btn-confirmar-si {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 8px;
+    font-weight: bold;
+}
+.btn-confirmar-si:hover { background: #bd2130; }
+
+.btn-confirmar-no {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 5px;
+    font-weight: bold;
+}
+.btn-confirmar-no:hover { background: #5a6268; }
+
+</style>
+
+<div class="pensiones-layout">
+
+    <div class="left">
+        <div class="search-panel">
+            <input type="text" placeholder="Buscar por cliente o matrícula...">
+        </div>
+
+        <div id="lista-pensiones">
+            {% for pension in lista_pensiones %}
+            <div class="card-pension">
+                <div class="card-info">
+                    <strong>{{ pension.nombre_cliente }}</strong>
+                    <span>Matrícula: {{ pension.matricula }} | Vence: {{ pension.fecha_vencimiento }}</span>
+                </div>
+                
+                <div class="estado-container">
+                    <div class="tag {{ pension.estado_clase }}">
+                        {{ pension.estado_texto }}
+                    </div>
+                    
+                    <!-- Solo mostramos las opciones si la pensión NO está vencida -->
+                    {% if pension.estado_clase != 'vencida' %}
+                    
+                    <!-- 1. Botón inicial de Cancelar -->
+                    <button type="button" class="btn-cancelar" id="btn-iniciar-{{ pension.matricula }}" onclick="pedirConfirmacion('{{ pension.matricula }}')">
+                        Cancelar
+                    </button>
+
+                    <!-- 2. Caja de confirmación (Oculta al inicio) -->
+                    <div class="confirmacion-box" id="box-conf-{{ pension.matricula }}">
+                        <span>¿Seguro?</span>
+                        <form action="/cancelar_pension/{{ pension.matricula }}" method="POST" style="margin: 0; display: inline;">
+                            <button type="submit" class="btn-confirmar-si">Sí</button>
+                        </form>
+                        <button type="button" class="btn-confirmar-no" onclick="cancelarConfirmacion('{{ pension.matricula }}')">No</button>
+                    </div>
+
+                    {% endif %}
+                </div>
+                
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="right">
+        <div class="form-box">
+            <h3>Registrar / Renovar Pensión</h3>
+            
+            <form method="POST" action="/procesar_pension">
+                <label>Identificador del Cliente</label>
+                <input type="text" name="identificador" placeholder="Matrícula o RFC" required>
+                
+                <label>Fecha de Inicio</label>
+                <input type="date" name="fecha_inicio" required>
+                
+                <label>Duración de Pensión</label>
+                <select name="duracion">
+                    <option value="1">1 Mes</option>
+                    <option value="3">3 Meses</option>
+                    <option value="6">6 Meses</option>
+                    <option value="12">1 Año</option>
+                </select>
+
+                <button type="submit" class="btn-registrar">Calcular y Registrar Pensión</button>
+            </form>
+
+            {% if recibo %}
+            <div class="recibo-box">
+                <h4>¡Pensión Registrada!</h4>
+                <div class="recibo-row">
+                    <span>Cajón Exclusivo Asignado:</span>
+                    <strong>Nº {{ recibo.cajon_asignado }}</strong>
+                    <span>Subtotal:</span>
+                    <span>${{ recibo.subtotal }}</span>
+                </div>
+                
+                {% if recibo.aplica_descuento %}
+                <div class="recibo-row descuento-text">
+                    <span>Descuento (Cliente Leal +2 años):</span>
+                    <span>- ${{ recibo.monto_descuento }}</span>
+                </div>
+                {% endif %}
+                
+                <div class="recibo-total">
+                    <span>TOTAL PAGADO:</span>
+                    <span>${{ recibo.total }}</span>
+                </div>
+                <div class="recibo-row" style="margin-top: 15px; border:none;">
+                    <span>Válido hasta:</span>
+                    <strong>{{ recibo.nueva_fecha_vencimiento }}</strong>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+</div>
+
+<!-- SCRIPT PARA CONTROLAR LA CONFIRMACIÓN EN LÍNEA -->
+<script>
+function pedirConfirmacion(matricula) {
+    // Ocultar el botón rojo original
+    document.getElementById('btn-iniciar-' + matricula).style.display = 'none';
+    // Mostrar la cajita de confirmación (Seguro? Sí / No)
+    document.getElementById('box-conf-' + matricula).style.display = 'flex';
+}
+
+function cancelarConfirmacion(matricula) {
+    // Ocultar la cajita de confirmación
+    document.getElementById('box-conf-' + matricula).style.display = 'none';
+    // Volver a mostrar el botón rojo original
+    document.getElementById('btn-iniciar-' + matricula).style.display = 'block';
+}
+</script>
+{% endblock %}

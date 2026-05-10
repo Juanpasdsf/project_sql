@@ -1,0 +1,178 @@
+{% extends "padre.html" %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+.main { padding: 20px; }
+
+.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.btn-pdf {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.filters input, .filters select {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.card {
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.charts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.chart-box {
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    height: 220px;
+}
+
+.tables {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+</style>
+
+<div class="main" id="reporte">
+
+    <div class="top">
+        <h2>Dashboard</h2>
+        <button class="btn-pdf" onclick="generarPDF()">Exportar PDF</button>
+    </div>
+
+    <div class="filters">
+        <input type="date" id="fecha">
+        <select id="usuario">
+            <option value="todos">Todos</option>
+            {% for c in lista_cobradores %}
+                <option value="{{ c.id }}">{{ c.nombre }}</option>
+            {% endfor %}
+        </select>
+        <select id="anio">
+            <option>2026</option>
+            <option>2025</option>
+        </select>
+    </div>
+
+    <div class="cards">
+        <div class="card"><h4>Entradas</h4><h2 id="kpi1">{{ kpi_movimientos }}</h2></div>
+        <div class="card"><h4>Mes pico</h4><h2 id="kpi2">{{ kpi_mes_pico }}</h2></div>
+        <div class="card"><h4>Horario pico</h4><h2 id="kpi3">{{ kpi_horario_pico }}</h2></div>
+        <div class="card"><h4>Ingresos</h4><h2 id="kpi4">${{ kpi_ingresos }}</h2></div>
+    </div>
+
+    <div class="charts">
+        <div class="chart-box"><canvas id="c1"></canvas></div>
+        <div class="chart-box"><canvas id="c2"></canvas></div>
+        <div class="chart-box"><canvas id="c3"></canvas></div>
+        <div class="chart-box"><canvas id="c4"></canvas></div>
+    </div>
+
+</div>
+
+<script>
+let meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+let chart1 = new Chart(document.getElementById('c1'), {
+    type: 'bar',
+    data: { labels: [], datasets: [{ label: 'Entradas', data: [] }] }
+});
+
+let chart2 = new Chart(document.getElementById('c2'), {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: 'Demanda', data: [] }] }
+});
+
+let chart3 = new Chart(document.getElementById('c3'), {
+    type: 'bar',
+    data: { labels: ['Top 1','Top 2','Top 3'], datasets: [{ label: 'Horas', data: [] }] }
+});
+
+let chart4 = new Chart(document.getElementById('c4'), {
+    type: 'pie',
+    data: { labels: ['Ingresos'], datasets: [{ data: [] }] }
+});
+
+async function cargarDatos() {
+
+    const fecha = document.getElementById('fecha').value;
+    const usuario = document.getElementById('usuario').value;
+    const anio = document.getElementById('anio').value;
+
+    const res = await fetch(`/api/dashboard?fecha=${fecha}&usuario=${usuario}&anio=${anio}`);
+    const data = await res.json();
+
+    // CHARTS
+    chart1.data.labels = meses.slice(0, data.entradas.length);
+    chart1.data.datasets[0].data = data.entradas;
+
+    chart2.data.labels = meses.slice(0, data.demanda.length);
+    chart2.data.datasets[0].data = data.demanda;
+
+    chart3.data.datasets[0].data = data.horarios;
+
+    chart4.data.datasets[0].data = data.ingresos;
+
+    chart1.update();
+    chart2.update();
+    chart3.update();
+    chart4.update();
+
+    // KPIs dinámicos
+    document.getElementById("kpi1").innerText = data.kpi_movimientos || 0;
+    document.getElementById("kpi2").innerText = data.kpi_mes_pico || "-";
+    document.getElementById("kpi3").innerText = data.kpi_horario_pico || "-";
+    document.getElementById("kpi4").innerText = "$" + data.kpi_ingresos;
+}
+
+// eventos
+document.querySelectorAll('#fecha, #usuario, #anio')
+    .forEach(el => el.addEventListener('change', cargarDatos));
+
+// carga inicial
+cargarDatos();
+
+function generarPDF() {
+    const elemento = document.getElementById('reporte');
+    html2pdf().from(elemento).save();
+}
+</script>
+
+{% endblock %}

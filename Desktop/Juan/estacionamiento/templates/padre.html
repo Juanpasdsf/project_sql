@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Sistema Estacionamiento</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+
+/* RESET */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* BODY */
+body {
+    background: #f4f6f9;
+}
+
+/* HEADER */
+.header {
+    background: #9db4d6;
+    padding: 15px;
+    text-align: center;
+    font-size: 26px;
+    font-weight: bold;
+    position: relative;
+}
+
+.user {
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    font-size: 14px;
+}
+
+/* NAVBAR */
+.navbar {
+    background: #0d1b5e;
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+    gap: 10px;
+}
+
+.navbar a {
+    color: white;
+    text-decoration: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    transition: 0.3s;
+}
+
+.navbar a:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+/* CONTENIDO */
+.container {
+    padding: 20px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="header">
+    Servicio de Estacionamiento
+    <div class="user">Admin</div>
+</div>
+
+<div class="navbar">
+    <!-- Tus enlaces normales que todos pueden ver -->
+    <a href="/clientes">Clientes</a>
+    <a href="/control">Control</a>
+    <a href="/pensiones">Pensiones</a>
+    
+
+<!-- Lógica: Solo se muestra si el rol_id es 1 (Administrador) -->
+    {% if session.get('rol_id') == 1 %}
+    <a href="/dashboard">Dashboard</a>
+    <a href="/historial">Historial</a>
+    <a href="/registro">Crear cuenta</a>
+    {% endif %}
+
+<!-- Lógica: Botón de cerrar sesión -->
+    {% if session.get('usuario') %}
+        <a href="/logout" style="color: #dc3545; font-weight: bold; margin-left: 20px;">Cerrar sesión</a>
+    {% endif %}
+</div>
+
+<div class="container">
+    {% block content %}
+    {% endblock %}
+</div>
+
+</body>
+</html>

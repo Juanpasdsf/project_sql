@@ -458,6 +458,7 @@ def registrar_entrada():
 
         if not vehiculo:
             return "Vehículo no encontrado"
+            
 
         cursor.execute("SELECT * FROM cajones WHERE estado = 'disponible' LIMIT 1")
         cajon = cursor.fetchone()
@@ -692,7 +693,26 @@ def ticket(id):
     if not pago:
         return redirect(url_for('main.control'))
 
-    return render_template('ticket.html', pago=pago)
+    # Normalizar las claves que usa el template `ticket.html`
+    pago_normalizado = dict(pago) if isinstance(pago, dict) else pago
+
+    # Alias  entre DB y template
+    pago_normalizado['horas'] = pago_normalizado.get('horas') or pago_normalizado.get('horas_totales') or pago_normalizado.get('horas_total')
+    pago_normalizado['total'] = pago_normalizado.get('total') or pago_normalizado.get('monto_total') or pago_normalizado.get('monto')
+    pago_normalizado['fecha'] = pago_normalizado.get('fecha') or pago_normalizado.get('fecha_pago')
+
+    # `cambio` no siempre se guarda en la BD; intentar obtenerlo desde la sesión (establecido en procesar_pago)
+    pago_sesion = session.pop('pago_final', None)
+    if pago_sesion:
+        pago_normalizado['cambio'] = pago_sesion.get('cambio', pago_normalizado.get('cambio'))
+        # si no hay total/horas en la BD, tomar los calculados en sesión
+        pago_normalizado['total'] = pago_normalizado.get('total') or pago_sesion.get('total')
+        pago_normalizado['horas'] = pago_normalizado.get('horas') or pago_sesion.get('horas')
+        pago_normalizado['fecha'] = pago_normalizado.get('fecha') or pago_sesion.get('fecha')
+    else:
+        pago_normalizado['cambio'] = pago_normalizado.get('cambio', 0)
+
+    return render_template('ticket.html', pago=pago_normalizado)
 
 
 @main_bp.route('/ticket_pdf/<int:id>')

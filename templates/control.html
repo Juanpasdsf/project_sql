@@ -100,6 +100,9 @@
 }
 .form-box input:focus { border-color: #4CAF50; outline: none; }
 
+.alert { padding: 12px; border-radius: 8px; margin-bottom: 12px; font-weight: bold; }
+.alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
 .btn-entrada {
     background: #0d1b5e;
     color: white;
@@ -167,6 +170,11 @@
         
         <div class="form-box">
             <h3>Registrar Entrada</h3>
+            {% if error %}
+            <div class="alert alert-error" role="alert">
+                {{ error }}
+            </div>
+            {% endif %}
             
             <form method="POST" action="/registrar_entrada">
                 <label>Identificación del Vehículo</label>

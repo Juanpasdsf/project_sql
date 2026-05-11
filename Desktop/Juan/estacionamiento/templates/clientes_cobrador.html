@@ -76,9 +76,8 @@
 .form-box h3 { margin-bottom: 15px; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
 .form-box input { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc; }
 
-/* ESTILOS DE BOTONES ACTUALIZADOS */
 .btn { 
-    background: #4CAF50; /* Verde por defecto para Guardar */
+    background: #4CAF50; 
     color: white; 
     border: none; 
     padding: 12px; 
@@ -91,16 +90,71 @@
 }
 .btn:hover { background: #45a049; }
 
-.btn-secondary { 
-    background: #0d1b5e; /* Azul oscuro para botones secundarios */
-}
+.btn-secondary { background: #0d1b5e; }
 .btn-secondary:hover { background: #1a2a7a; }
 
-.btn-eliminar { 
-    background: #dc3545; /* Rojo para advertencia/eliminar */
-}
+.btn-eliminar { background: #dc3545; }
 .btn-eliminar:hover { background: #c82333; }
+
+/* --- ESTILOS DEL MODAL Y ALERTA --- */
+.modal-overlay {
+    display: none; /* Oculto por defecto */
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5); /* Fondo oscuro semitransparente */
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    width: 350px;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content h4 { color: #dc3545; margin-bottom: 10px; font-size: 20px; }
+.modal-content p { font-size: 14px; color: #555; margin-bottom: 25px; }
+
+.modal-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.alerta-inline {
+    display: none;
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: bold;
+    border: 1px solid #f5c6cb;
+}
 </style>
+
+<div id="modal-confirmacion" class="modal-overlay">
+    <div class="modal-content">
+        <h4>⚠️ Confirmar Eliminación</h4>
+        <p>¿Estás seguro de que deseas eliminar a este cliente? Se borrarán también todos sus vehículos registrados.</p>
+        <div class="modal-buttons">
+            <button type="button" class="btn btn-secondary" style="margin-bottom: 0;" onclick="cerrarModal()">Cancelar</button>
+            <button type="button" class="btn btn-eliminar" style="margin-bottom: 0;" onclick="ejecutarEliminacion()">Sí, eliminar</button>
+        </div>
+    </div>
+</div>
 
 <div class="clientes-layout">
 
@@ -112,25 +166,15 @@
         <div id="contenedor-cards">
             {% for cliente in clientes %}
             <div class="card"
-    onclick="cargarCliente(
-        '{{ cliente.cliente_id }}',
-        '{{ cliente.nombre }}',
-        '{{ cliente.telefono }}',
-        '{{ cliente.rfc }}',
-        '{{ cliente.email }}',
-        '{{ cliente.tipo_cliente_id }}',
-        this
-    )">
-
-    <div>
-        <strong>{{ cliente.nombre }}</strong><br>
-        <small>
-            Vehículos: {{ cliente.matriculas if cliente.matriculas else 'Sin vehículos' }}
-        </small>
-    </div>
-
-    <div class="tag activo">Activo</div>
-</div>
+            onclick="cargarCliente('{{ cliente.cliente_id }}','{{ cliente.nombre }}','{{ cliente.telefono }}','{{ cliente.rfc }}','{{ cliente.email }}', this)">
+                <div>
+                    <strong>{{ cliente.nombre }}</strong><br>
+                    <small>
+                        Vehículos: {{ cliente.matriculas if cliente.matriculas else 'Sin vehículos' }}
+                    </small>
+                </div>
+                <div class="tag activo">Activo</div>
+            </div>
             {% endfor %}
         </div>
     </div>
@@ -139,6 +183,16 @@
         <div class="form-box">
             <h3 id="titulo">Registrar cliente</h3>
 
+            {% if error_db %}
+            <div style="background-color: #f8d7da; color: #721c24; padding: 12px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-size: 13px; font-weight: bold; border: 1px solid #f5c6cb;">
+                ⚠️ {{ error_db }}
+            </div>
+            {% endif %}
+
+            <div id="alerta-vacio" class="alerta-inline">
+                ⚠️ Por favor, selecciona un cliente de la lista primero.
+            </div>
+
             <form method="POST" action="/procesar_cliente" onsubmit="return validar()">
                 <input type="hidden" id="cliente_id" name="cliente_id">
 
@@ -146,10 +200,6 @@
                 <input type="text" id="telefono" name="telefono" placeholder="Teléfono" required>
                 <input type="text" id="rfc" name="rfc" placeholder="RFC">
                 <input type="email" id="email" name="email" placeholder="Correo">
-                <select name="tipo_cliente_id" id="tipo_cliente_id" required>
-                    <option value="1">De paso</option>
-                    <option value="2">Frecuente</option>
-                </select>
 
                 <hr>
 
@@ -167,8 +217,7 @@
 
                 <button type="submit" class="btn" id="btnGuardar">Guardar cliente</button>
 
-                <!-- Se cambió a btn-eliminar -->
-                <button type="button" class="btn btn-eliminar" onclick="eliminarCliente()">
+                <button type="button" class="btn btn-eliminar" onclick="intentarEliminar()">
                     Eliminar cliente
                 </button>
             </form>
@@ -182,8 +231,7 @@
 </div>
 
 <script>
-function cargarCliente(id, nombre, telefono, rfc, email, tipo_cliente_id, element) {
-
+function cargarCliente(id, nombre, telefono, rfc, email, element) {
     document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
     element.classList.add('active');
 
@@ -192,7 +240,6 @@ function cargarCliente(id, nombre, telefono, rfc, email, tipo_cliente_id, elemen
     document.getElementById('telefono').value = telefono || "";
     document.getElementById('rfc').value = rfc || "";
     document.getElementById('email').value = email || "";
-    document.getElementById('tipo_cliente_id').value = tipo_cliente_id ? tipo_cliente_id : "1";
 
     document.getElementById('titulo').innerText = "Editar cliente";
     document.getElementById('btnGuardar').innerText = "Actualizar cliente";
@@ -200,7 +247,6 @@ function cargarCliente(id, nombre, telefono, rfc, email, tipo_cliente_id, elemen
     fetch('/obtener_vehiculos/' + id)
     .then(res => res.json())
     .then(data => {
-
         const container = document.getElementById('vehiculos-container');
         container.innerHTML = "";
 
@@ -222,13 +268,11 @@ function cargarCliente(id, nombre, telefono, rfc, email, tipo_cliente_id, elemen
 
             container.appendChild(div);
         });
-
     });
 }
 
 function agregarVehiculo() {
     const container = document.getElementById('vehiculos-container');
-
     const div = document.createElement('div');
     div.classList.add('vehiculo');
 
@@ -238,22 +282,39 @@ function agregarVehiculo() {
         <input type="text" name="color[]" placeholder="Color">
         <button type="button" onclick="this.parentElement.remove()">❌</button>
     `;
-
     container.appendChild(div);
 }
 
-function eliminarCliente() {
+// --- FUNCIONES DE ELIMINACIÓN ---
+
+function intentarEliminar() {
     let id = document.getElementById('cliente_id').value;
 
     if (!id) {
-        alert("Selecciona un cliente primero");
+        // Mostrar la alerta en línea
+        const alerta = document.getElementById('alerta-vacio');
+        alerta.style.display = 'block';
+        
+        // Ocultarla automáticamente después de 3 segundos
+        setTimeout(() => {
+            alerta.style.display = 'none';
+        }, 3000);
         return;
     }
 
-    if (confirm("¿Estás seguro de que deseas eliminar este cliente? Se borrarán también sus vehículos.")) {
-        window.location.href = "/eliminar_cliente/" + id;
-    }
+    // Si sí hay un ID, mostramos el modal
+    document.getElementById('modal-confirmacion').style.display = 'flex';
 }
+
+function cerrarModal() {
+    document.getElementById('modal-confirmacion').style.display = 'none';
+}
+
+function ejecutarEliminacion() {
+    let id = document.getElementById('cliente_id').value;
+    window.location.href = "/eliminar_cliente/" + id;
+}
+// ----------------------------------------
 
 function limpiarForm() {
     document.getElementById('cliente_id').value = "";

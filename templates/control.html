@@ -71,7 +71,7 @@
     background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px);
 }
 
-/* FORMULARIO DE ENTRADA */
+/* FORMULARIOS */
 .form-box {
     background: #f9fafb;
     padding: 20px;
@@ -100,8 +100,17 @@
 }
 .form-box input:focus { border-color: #4CAF50; outline: none; }
 
-.alert { padding: 12px; border-radius: 8px; margin-bottom: 12px; font-weight: bold; }
-.alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.alert-error { 
+    background: #f8d7da; 
+    color: #721c24; 
+    border: 1px solid #f5c6cb;
+    padding: 12px; 
+    border-radius: 8px; 
+    margin-bottom: 15px; 
+    text-align: center; 
+    font-size: 13px; 
+    font-weight: bold; 
+}
 
 .btn-entrada {
     background: #0d1b5e;
@@ -169,6 +178,13 @@
     <div class="right">
         
         <div class="form-box">
+            
+            {% if error %}
+            <div class="alert-error">
+                ⚠️ {{ error }}
+            </div>
+            {% endif %}
+
             <h3>Registrar Entrada</h3>
             <form method="POST" action="/registrar_entrada">
                 <label>Identificación del Vehículo</label>
@@ -177,10 +193,9 @@
                 <button type="submit" class="btn-entrada">Asignar Lugar y Generar Boleto</button>
             </form>
 
-            <hr>
+            <hr style="margin: 20px 0; border: 1px solid #eee;">
 
             <h3>Registrar Salida</h3>
-
             <form method="POST" action="/registrar_salida">
                 <label>Matrícula</label>
                 <input type="text" name="identificador" placeholder="Matrícula" required>

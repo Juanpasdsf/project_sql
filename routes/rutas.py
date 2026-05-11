@@ -457,15 +457,93 @@ def registrar_entrada():
         vehiculo = cursor.fetchone()
 
         if not vehiculo:
-            return "Vehículo no encontrado"
-            
+            cursor.execute("""
+                SELECT c.cajon_id, c.numero, c.estado, v.matricula
+                FROM cajones c
+                LEFT JOIN estancias e ON c.cajon_id = e.cajon_id AND e.fecha_salida IS NULL
+                LEFT JOIN vehiculos v ON e.matricula = v.matricula
+            """)
+            cajones = cursor.fetchall()
 
+            capacidad_total = len(cajones)
+            lugares_ocupados = sum(1 for c in cajones if c['estado'] == 'ocupado')
+            lugares_libres = capacidad_total - lugares_ocupados
+
+            cursor.close()
+            conexion.close()
+
+            return render_template(
+                'control.html',
+                capacidad_total=capacidad_total,
+                lugares_libres=lugares_libres,
+                lugares_ocupados=lugares_ocupados,
+                lista_cajones=cajones,
+                ticket_generado=False,
+                error="Vehículo no encontrado"
+            )
+
+        # Tu código: Evitar duplicados
+        cursor.execute(
+            "SELECT estancia_id FROM estancias WHERE matricula = %s AND fecha_salida IS NULL",
+            (vehiculo['matricula'],)
+        )
+        if cursor.fetchone():
+            cursor.execute("""
+                SELECT c.cajon_id, c.numero, c.estado, v.matricula
+                FROM cajones c
+                LEFT JOIN estancias e ON c.cajon_id = e.cajon_id AND e.fecha_salida IS NULL
+                LEFT JOIN vehiculos v ON e.matricula = v.matricula
+            """)
+            cajones = cursor.fetchall()
+
+            capacidad_total = len(cajones)
+            lugares_ocupados = sum(1 for c in cajones if c['estado'] == 'ocupado')
+            lugares_libres = capacidad_total - lugares_ocupados
+
+            cursor.close()
+            conexion.close()
+
+            return render_template(
+                'control.html',
+                capacidad_total=capacidad_total,
+                lugares_libres=lugares_libres,
+                lugares_ocupados=lugares_ocupados,
+                lista_cajones=cajones,
+                ticket_generado=False,
+                error="El vehículo ya está dentro"
+            )
+            
         cursor.execute("SELECT * FROM cajones WHERE estado = 'disponible' LIMIT 1")
         cajon = cursor.fetchone()
 
         if not cajon:
-            return "No hay lugares disponibles"
+            # CORRECCIÓN: Evitar pantalla blanca si está lleno
+            cursor.execute("""
+                SELECT c.cajon_id, c.numero, c.estado, v.matricula
+                FROM cajones c
+                LEFT JOIN estancias e ON c.cajon_id = e.cajon_id AND e.fecha_salida IS NULL
+                LEFT JOIN vehiculos v ON e.matricula = v.matricula
+            """)
+            cajones = cursor.fetchall()
 
+            capacidad_total = len(cajones)
+            lugares_ocupados = sum(1 for c in cajones if c['estado'] == 'ocupado')
+            lugares_libres = capacidad_total - lugares_ocupados
+
+            cursor.close()
+            conexion.close()
+
+            return render_template(
+                'control.html',
+                capacidad_total=capacidad_total,
+                lugares_libres=lugares_libres,
+                lugares_ocupados=lugares_ocupados,
+                lista_cajones=cajones,
+                ticket_generado=False,
+                error="Estacionamiento lleno. No hay lugares disponibles."
+            )
+
+        from datetime import datetime
         cursor.execute("""
             INSERT INTO estancias (fecha_entrada, matricula, cajon_id, tipo_servicio_id, usuario_id)
             VALUES (%s, %s, %s, %s, %s)
@@ -482,13 +560,19 @@ def registrar_entrada():
 
     except Exception as e:
         conexion.rollback()
-        print(e)
-        return "Error en entrada"
+        print("Error en entrada:", e)
+        # CORRECCIÓN: Evitar pantalla blanca si hay error de DB
+        return redirect(url_for('main.control'))
 
     finally:
-        cursor.close()
-        conexion.close()
+        # Solo cerramos si la conexión sigue activa para que no tire error al redirigir arriba
+        try:
+            cursor.close()
+            conexion.close()
+        except:
+            pass
 
+    # Mostrar éxito recargando el mapa
     conexion = get_connection()
     cursor = conexion.cursor(dictionary=True)
 
@@ -536,7 +620,28 @@ def registrar_salida():
         estancia = cursor.fetchone()
 
         if not estancia:
-            return "No hay estancia activa"
+            # ¡EL CAMBIO ESTÁ AQUÍ! En vez de devolver texto, recargamos el mapa y mandamos el error
+            cursor.execute("""
+                SELECT c.cajon_id, c.numero, c.estado, v.matricula
+                FROM cajones c
+                LEFT JOIN estancias e ON c.cajon_id = e.cajon_id AND e.fecha_salida IS NULL
+                LEFT JOIN vehiculos v ON e.matricula = v.matricula
+            """)
+            cajones = cursor.fetchall()
+
+            capacidad_total = len(cajones)
+            lugares_ocupados = sum(1 for c in cajones if c['estado'] == 'ocupado')
+            lugares_libres = capacidad_total - lugares_ocupados
+
+            return render_template(
+                'control.html',
+                capacidad_total=capacidad_total,
+                lugares_libres=lugares_libres,
+                lugares_ocupados=lugares_ocupados,
+                lista_cajones=cajones,
+                ticket_generado=False,
+                error=f"No se encontró ninguna estancia activa para la matrícula {identificador}."
+            )
 
         from datetime import datetime
 
@@ -561,15 +666,16 @@ def registrar_salida():
             'fecha_salida': str(fecha_salida)
         }
 
+        return redirect(url_for('main.cobro'))
+
     except Exception as e:
-        print(e)
-        return "Error"
+        print("Error en salida:", e)
+        # Por si falla la base de datos, lo regresamos a control
+        return redirect(url_for('main.control'))
 
     finally:
         cursor.close()
         conexion.close()
-
-    return redirect(url_for('main.cobro'))
 
 @main_bp.route('/cobro')
 def cobro():

@@ -170,12 +170,6 @@
         
         <div class="form-box">
             <h3>Registrar Entrada</h3>
-            {% if error %}
-            <div class="alert alert-error" role="alert">
-                {{ error }}
-            </div>
-            {% endif %}
-            
             <form method="POST" action="/registrar_entrada">
                 <label>Identificación del Vehículo</label>
                 <input type="text" name="identificador" placeholder="Matrícula o Nombre del cliente" required>

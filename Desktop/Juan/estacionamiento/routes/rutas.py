@@ -103,24 +103,24 @@ def clientes_cobrador():
 
     cursor.execute("""
     SELECT 
-        c.cliente_id,
-        c.nombre,
-        c.telefono,
-        c.rfc,
-        c.email,
-        c.tipo_cliente_id,
+        c.cliente_id, c.nombre, c.telefono, c.rfc, c.email,
         GROUP_CONCAT(v.matricula SEPARATOR ', ') AS matriculas
     FROM clientes c
     LEFT JOIN vehiculos v ON c.cliente_id = v.cliente_id
     GROUP BY c.cliente_id
     """)
-
     clientes = cursor.fetchall()
-
+    
     cursor.close()
     conexion.close()
 
-    return render_template('clientes_cobrador.html', clientes=clientes)
+    # ¡NUEVO!: Atrapamos el error si venimos de un intento fallido de eliminación
+    error_msg = request.args.get('error')
+    mensaje_error = None
+    if error_msg == 'historial':
+        mensaje_error = "No se puede eliminar este cliente porque ya tiene historial de estancias o pensiones registradas."
+
+    return render_template('clientes_cobrador.html', clientes=clientes, error_db=mensaje_error)
 
 @main_bp.route('/obtener_vehiculos/<int:id>')
 def obtener_vehiculos(id):
@@ -148,7 +148,9 @@ def procesar_cliente():
     telefono = request.form.get('telefono')
     rfc = request.form.get('rfc')
     email = request.form.get('email')
-    tipo_cliente_id = request.form.get('tipo_cliente_id')
+    
+    # EL CAMBIO ESTÁ AQUÍ: Si viene vacío, le asignamos 1 por defecto
+    tipo_cliente_id = request.form.get('tipo_cliente_id') or 1
 
     matriculas = request.form.getlist('matricula[]')
     modelos = request.form.getlist('modelo[]')
@@ -240,34 +242,14 @@ def eliminar_cliente(id):
     cursor = conexion.cursor()
 
     try:
-        # Obtener vehículos del cliente
-        cursor.execute("SELECT matricula FROM vehiculos WHERE cliente_id = %s", (id,))
-        vehiculos = [v[0] for v in cursor.fetchall()]
-
-        for mat in vehiculos:
-            cursor.execute("SELECT 1 FROM estancias WHERE matricula = %s LIMIT 1", (mat,))
-            
-            if cursor.fetchone():
-                # 👉 Tiene historial → NO borrar
-                cursor.execute("""
-                    UPDATE vehiculos
-                    SET cliente_id = NULL
-                    WHERE matricula = %s
-                """, (mat,))
-            else:
-                # 👉 Sin historial → borrar
-                cursor.execute("DELETE FROM vehiculos WHERE matricula = %s", (mat,))
-
-        # Ahora sí eliminar cliente
+        cursor.execute("DELETE FROM vehiculos WHERE cliente_id = %s", (id,))
         cursor.execute("DELETE FROM clientes WHERE cliente_id = %s", (id,))
-
         conexion.commit()
-
     except Exception as e:
         conexion.rollback()
-        print("Error:", e)
-        return "No se puede eliminar el cliente"
-
+        print("Error al eliminar cliente:", e)
+        # ¡EL CAMBIO CLAVE!: En lugar de devolver texto, redirigimos mandando una señal de error
+        return redirect(url_for('main.clientes_cobrador', error="historial"))
     finally:
         cursor.close()
         conexion.close()

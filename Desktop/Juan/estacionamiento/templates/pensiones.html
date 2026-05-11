@@ -96,7 +96,7 @@
 .recibo-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; color: #0d1b5e; margin-top: 10px; }
 .descuento-text { color: #d9534f; font-weight: bold; }
 
-/* --- NUEVOS ESTILOS DE CONFIRMACIÓN EN LÍNEA --- */
+/* --- ESTILOS DE CONFIRMACIÓN EN LÍNEA --- */
 .estado-container { display: flex; align-items: center; }
 
 .btn-cancelar {
@@ -155,7 +155,7 @@
 
     <div class="left">
         <div class="search-panel">
-            <input type="text" placeholder="Buscar por cliente o matrícula...">
+            <input type="text" id="buscador-pensiones" placeholder="Buscar por cliente o matrícula...">
         </div>
 
         <div id="lista-pensiones">
@@ -171,15 +171,12 @@
                         {{ pension.estado_texto }}
                     </div>
                     
-                    <!-- Solo mostramos las opciones si la pensión NO está vencida -->
                     {% if pension.estado_clase != 'vencida' %}
                     
-                    <!-- 1. Botón inicial de Cancelar -->
                     <button type="button" class="btn-cancelar" id="btn-iniciar-{{ pension.matricula }}" onclick="pedirConfirmacion('{{ pension.matricula }}')">
                         Cancelar
                     </button>
 
-                    <!-- 2. Caja de confirmación (Oculta al inicio) -->
                     <div class="confirmacion-box" id="box-conf-{{ pension.matricula }}">
                         <span>¿Seguro?</span>
                         <form action="/cancelar_pension/{{ pension.matricula }}" method="POST" style="margin: 0; display: inline;">
@@ -224,6 +221,8 @@
                 <div class="recibo-row">
                     <span>Cajón Exclusivo Asignado:</span>
                     <strong>Nº {{ recibo.cajon_asignado }}</strong>
+                </div>
+                <div class="recibo-row">
                     <span>Subtotal:</span>
                     <span>${{ recibo.subtotal }}</span>
                 </div>
@@ -251,19 +250,29 @@
 
 </div>
 
-<!-- SCRIPT PARA CONTROLAR LA CONFIRMACIÓN EN LÍNEA -->
 <script>
+// --- NUEVO: FUNCIONALIDAD DEL BUSCADOR ---
+document.getElementById('buscador-pensiones').addEventListener('keyup', function() {
+    let filtro = this.value.toLowerCase();
+    
+    // Seleccionamos todas las tarjetas de pensión
+    document.querySelectorAll('.card-pension').forEach(card => {
+        // Leemos todo el texto adentro de la tarjeta (nombre, matrícula, etc.)
+        let texto = card.innerText.toLowerCase();
+        
+        // Si el texto incluye lo que se escribió en el buscador, lo mostramos (flex). Si no, lo ocultamos (none).
+        card.style.display = texto.includes(filtro) ? 'flex' : 'none';
+    });
+});
+
+// --- FUNCIONALIDAD DE CONFIRMACIÓN EN LÍNEA ---
 function pedirConfirmacion(matricula) {
-    // Ocultar el botón rojo original
     document.getElementById('btn-iniciar-' + matricula).style.display = 'none';
-    // Mostrar la cajita de confirmación (Seguro? Sí / No)
     document.getElementById('box-conf-' + matricula).style.display = 'flex';
 }
 
 function cancelarConfirmacion(matricula) {
-    // Ocultar la cajita de confirmación
     document.getElementById('box-conf-' + matricula).style.display = 'none';
-    // Volver a mostrar el botón rojo original
     document.getElementById('btn-iniciar-' + matricula).style.display = 'block';
 }
 </script>
